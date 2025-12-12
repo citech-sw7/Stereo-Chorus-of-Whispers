@@ -1,10 +1,17 @@
-# Stereo Chorus of Whispers
+# 🏆 Stereo Chorus of Whispers
 
-Winner solution of the Cadenza Lyric Intelligibility Prediction (CLIP) Challenge at ICASSP 2026 — see [Official Results (T045)](https://cadenzachallenge.org/docs/clip1/results)
+> **Winner Solution** of the [Cadenza Lyric Intelligibility Prediction (CLIP) Challenge](https://cadenzachallenge.org/docs/clip1/intro) at **ICASSP 2026**
+> 🥇 **Rank: 1st Place** | [Official Results (T045)](https://cadenzachallenge.org/docs/clip1/results)
+
+
+![System Architecture](figure.png)
 
 ---
 
-## Setup
+## 🛠️ Setup
+
+### 1. Environment Installation
+We recommend using **Conda** to manage the environment.
 
 ```bash
 conda create -n cadenza python=3.10
@@ -13,111 +20,127 @@ conda activate cadenza
 git clone https://github.com/jinlongbin/Stereo-Chorus-of-Whispers.git
 cd Stereo-Chorus-of-Whispers
 
+# Install PyTorch
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+# Install dependencies
 pip install -r requirements.txt
-# PESQ (Windows): install via conda-forge
+
+# Install PESQ (Windows users need conda-forge)
 conda install -c conda-forge pesq
 ```
 ---
 
-## Quick Start (inference only)
-Run inference for validation and evaluation:
+## 🚀 Quick Start (Inference Only)
+You can run inference immediately using pre-trained checkpoint `checkpoints/final/model.pt`for validation and evaluation.
 ```bash
 python infer.py
 ```
-Outputs: `checkpoints/final/inference.csv`, `checkpoints/final/eval_inference.csv`.
+Outputs:
+
+- `checkpoints/final/inference.csv`
+
+- `checkpoints/final/eval_inference.csv`
 
 ---
 
-## 1. Data prep (JSON -> CSV)
-Download the data from Zenodo: https://zenodo.org/records/17789818 (train/valid/eval packages). After extracting into `data/`, replace the metadata JSONs with those from `cadenza_clip1_data.metadata.v1.2.tar.gz`. Final structure:
+## 1. Data Preparation (JSON -> CSV)
+- Download the train/valid/eval data packages from [Zenodo](https://zenodo.org/records/17789818).
+- Extract them into the `data/` directory.
+- **Important**: Replace the original metadata JSONs with the updated versions from `cadenza_clip1_data.metadata.v1.2.tar.gz`.
+
+**Expected Directory Structure:**
 ```
 data/
-  cadenza_data_train/
-    metadata/train_metadata.json  # from cadenza_clip1_data.metadata.v1.2.tar.gz
-    train/
-      signals/*.flac
-      unprocessed/*.flac
-  cadenza_data_valid/
-    metadata/valid_metadata.json  # from cadenza_clip1_data.metadata.v1.2.tar.gz
-    valid/
-      signals/*.flac
-      unprocessed/*.flac
-  cadenza_data_eval/
-    metadata/eval_metadata.json  # from cadenza_clip1_data.metadata.v1.2.tar.gz
-    eval/
-      signals/*.flac
-      unprocessed/*.flac
+  ├── cadenza_data_train/
+  │   ├── metadata/train_metadata.json  # from cadenza_clip1_data.metadata.v1.2.tar.gz
+  │   └── train/
+  │       ├── signals/*.flac
+  │       └── unprocessed/*.flac
+  ├── cadenza_data_valid/
+  │   ├── metadata/valid_metadata.json  # from cadenza_clip1_data.metadata.v1.2.tar.gz
+  │   └── valid/
+  │       ├── signals/*.flac
+  │       └── unprocessed/*.flac
+  └── cadenza_data_eval/
+      ├── metadata/eval_metadata.json   # from cadenza_clip1_data.metadata.v1.2.tar.gz
+      └── eval/
+          ├── signals/*.flac
+          └── unprocessed/*.flac
 ```
 
+**Generate CSV Metadata:**
 ```bash
 python metadata_to_csv.py --json data/cadenza_data_train/metadata/train_metadata.json
 python metadata_to_csv.py --json data/cadenza_data_valid/metadata/valid_metadata.json
 python metadata_to_csv.py --json data/cadenza_data_eval/metadata/eval_metadata.json
 ```
-Outputs: `data/cadenza_data_train/metadata/train_metadata_l.csv`, `data/cadenza_data_train/metadata/train_metadata_r.csv`, `data/cadenza_data_valid/metadata/valid_metadata_l.csv`, `data/cadenza_data_valid/metadata/valid_metadata_r.csv`, `data/cadenza_data_eval/metadata/eval_metadata_l.csv`, `data/cadenza_data_eval/metadata/eval_metadata_r.csv`
+Outputs: 
+- `data/cadenza_data_train/metadata/train_metadata_l.csv`, `data/cadenza_data_train/metadata/train_metadata_r.csv`
+- `data/cadenza_data_valid/metadata/valid_metadata_l.csv`, `data/cadenza_data_valid/metadata/valid_metadata_r.csv`
+- `data/cadenza_data_eval/metadata/eval_metadata_l.csv`, `data/cadenza_data_eval/metadata/eval_metadata_r.csv`
 
-The CSVs are already generated under `data/cadenza_data_*/metadata/*.csv`, regenerate from JSON if needed.
+**Note**: The CSVs are already generated under `data/cadenza_data_*/metadata/*.csv`, regenerate from JSON if needed.
 
 ---
 
 ## 2. Feature extraction (Whisper scoring)
-Outputs already present in the metadata CSVs; rerun if you want to refresh.
 
-Config: `feature_config.yaml` (section `whisper` plus shared `datasets`).
+Extract stereo-aware Whisper features. Configuration is defined in `feature_config.yaml`.
 ```bash
+# Run for all default splits
 python whisper_inference.py --config feature_config.yaml
-# run selected splits
+
+# [Optional] Run specific splits or channels
 python whisper_inference.py --config feature_config.yaml --splits=train,valid,eval
-# run only right-channel datasets
 python whisper_inference.py --config feature_config.yaml --channel=right
-# run specific datasets by name
-python whisper_inference.py --config feature_config.yaml --datasets eval_left eval_right
 ```
+**Note**: If you are using the provided CSVs, features might already be present. Run these steps to refresh or re-compute.
 
 ---
 
-## 3. Audio quality (STOI/eSTOI/PESQ) and DNSMOS
-Outputs already present in the metadata CSVs; rerun if you want to refresh.
+## 3. Metric Computation (STOI / eSTOI / PESQ / DNSMOS)
 
-Config: `feature_config.yaml` (section `metrics` plus shared `datasets`).
+Compute audio quality. Configuration is defined in `feature_config.yaml`.
 ```bash
+# Compute all metrics
 python compute_metrics.py --config feature_config.yaml
-# run selected splits
-python compute_metrics.py --config feature_config.yaml --splits=train,valid,eval
-# quality only
+
+# [Optional] Compute specific metrics or datasets
 python compute_metrics.py --config feature_config.yaml --quality --datasets signal_eval_left signal_eval_right
-# DNS only
 python compute_metrics.py --config feature_config.yaml --dns
 ```
+**Note**: If you are using the provided CSVs, features might already be present. Run these steps to refresh or re-compute.
 
 ---
 
 ## 4. Model training & inference
 
-Config: `checkpoints/final/config.yaml`.
+Configuration file: `checkpoints/final/config.yaml`
 
-Train:
+**Training**
+To train the model from scratch:
 ```bash
 python train.py
 ```
-Artifacts saved to `checkpoints/final/` (`model.pt`, `train_log.csv`).
+- Artifacts: Saved to checkpoints/final/ (includes model.pt, train_log.csv).
 
-Inference (runs valid + eval by default):
+**Inference** 
+To run inference using the trained model (defaults to Valid + Eval splits):
 ```bash
 python infer.py
-```
-Override splits:
-```bash
-python infer.py infer.splits=[valid]
+
+# [Optional] Run inference on evaluation set only
 python infer.py infer.splits=[eval]
 ```
-Outputs land in `checkpoints/final/` (`inference.csv`, `eval_inference.csv`).
+
+Outputs
+- `checkpoints/final/valid_inference.csv`
+- `checkpoints/final/eval_inference.csv`
 
 ---
 
 ## Citation
-If you use this code, please cite:
 ```
 @inproceedings{scow2026,
   title        = {Stereo Chorus of Whispers: Perceptually-Augmented Ear-Specific Intelligibility Prediction},

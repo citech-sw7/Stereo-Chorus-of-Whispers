@@ -118,6 +118,7 @@ python compute_metrics.py --config feature_config.yaml --dns
 Configuration file: `checkpoints/final/config.yaml`
 
 **Training**
+
 To train the model from scratch:
 ```bash
 python train.py
@@ -125,6 +126,7 @@ python train.py
 - Artifacts: Saved to checkpoints/final/ (includes model.pt, train_log.csv).
 
 **Inference** 
+
 To run inference using the trained model (defaults to Valid + Eval splits):
 ```bash
 python infer.py
